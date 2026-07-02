@@ -54,7 +54,9 @@ export function HomePage({ onEnter }: Props) {
   return (
     <div className="page-center">
       <div className="card home-card">
-        <h1>Progress Note</h1>
+        <h1>
+          Progress <span className="accent-word">Note</span>
+        </h1>
         <p className="subtitle">醫病即時診斷筆記 — 語音轉文字 · 即時校對 · AI 診後摘要</p>
 
         <div className="tab-switch">

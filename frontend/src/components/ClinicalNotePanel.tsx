@@ -172,19 +172,19 @@ export function ClinicalNotePanel({ sessionId, role, note, analyzing, onUpdated 
 
   return (
     <div className="note-panel patient-view">
-      <section className="note-card">
+      <section className="note-card summary">
         <h3>本次看診摘要</h3>
         <p>{note.patient_summary}</p>
       </section>
 
       {note.medications.length > 0 && (
-        <section className="note-card">
+        <section className="note-card medications">
           <h3>用藥資訊</h3>
           <ul>
             {note.medications.map((med, i) => (
               <li key={i}>
                 <strong>{med.name}</strong>
-                {med.dosage && ` — ${med.dosage}`}
+                {med.dosage && <span className="med-dosage">{med.dosage}</span>}
                 {med.instructions && <div className="med-instructions">{med.instructions}</div>}
               </li>
             ))}
@@ -192,7 +192,7 @@ export function ClinicalNotePanel({ sessionId, role, note, analyzing, onUpdated 
         </section>
       )}
 
-      <section className="note-card">
+      <section className="note-card followup">
         <h3>後續追蹤</h3>
         <p>{note.follow_up}</p>
       </section>
