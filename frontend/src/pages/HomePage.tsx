@@ -1,12 +1,14 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { api } from '../api/client'
-import { saveIdentity } from '../lib/identity'
+import type { StoredIdentity } from '../lib/identity'
 
 type Tab = 'doctor' | 'patient'
 
-export function HomePage() {
-  const navigate = useNavigate()
+interface Props {
+  onEnter: (identity: StoredIdentity) => void
+}
+
+export function HomePage({ onEnter }: Props) {
   const [tab, setTab] = useState<Tab>('doctor')
 
   const [doctorName, setDoctorName] = useState('')
@@ -24,8 +26,7 @@ export function HomePage() {
     setError(null)
     try {
       const session = await api.createSession(doctorName.trim())
-      saveIdentity({ sessionId: session.id, role: 'doctor', name: doctorName.trim() })
-      navigate(`/consultation/${session.id}`)
+      onEnter({ sessionId: session.id, role: 'doctor', name: doctorName.trim() })
     } catch (err) {
       setError(err instanceof Error ? err.message : '建立診間失敗')
     } finally {
@@ -42,8 +43,7 @@ export function HomePage() {
     setError(null)
     try {
       const session = await api.joinSession(joinCode.trim().toUpperCase(), patientName.trim())
-      saveIdentity({ sessionId: session.id, role: 'patient', name: patientName.trim() })
-      navigate(`/consultation/${session.id}`)
+      onEnter({ sessionId: session.id, role: 'patient', name: patientName.trim() })
     } catch (err) {
       setError(err instanceof Error ? err.message : '加入診間失敗')
     } finally {

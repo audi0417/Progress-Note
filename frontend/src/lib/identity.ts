@@ -9,16 +9,19 @@ export interface StoredIdentity {
 const KEY = 'progress-note:identity'
 
 export function saveIdentity(identity: StoredIdentity) {
-  sessionStorage.setItem(KEY, JSON.stringify(identity))
+  localStorage.setItem(KEY, JSON.stringify(identity))
 }
 
-export function loadIdentity(sessionId: string): StoredIdentity | null {
-  const raw = sessionStorage.getItem(KEY)
+export function loadIdentity(): StoredIdentity | null {
+  const raw = localStorage.getItem(KEY)
   if (!raw) return null
   try {
-    const parsed = JSON.parse(raw) as StoredIdentity
-    return parsed.sessionId === sessionId ? parsed : null
+    return JSON.parse(raw) as StoredIdentity
   } catch {
     return null
   }
+}
+
+export function clearIdentity() {
+  localStorage.removeItem(KEY)
 }

@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { ClinicalNotePanel } from '../components/ClinicalNotePanel'
 import { MicControl } from '../components/MicControl'
@@ -7,14 +6,16 @@ import { RoleBanner } from '../components/RoleBanner'
 import { TranscriptPanel } from '../components/TranscriptPanel'
 import { useAudioStreamer } from '../hooks/useAudioStreamer'
 import { useConsultationSocket } from '../hooks/useConsultationSocket'
-import { loadIdentity } from '../lib/identity'
+import type { StoredIdentity } from '../lib/identity'
 import type { ClinicalNote, ConsultationSession, PartialTranscript, ServerEvent, SpeakerRole, TranscriptSegment } from '../types'
 
-export function ConsultationPage() {
-  const { sessionId } = useParams<{ sessionId: string }>()
-  const navigate = useNavigate()
+interface Props {
+  identity: StoredIdentity
+  onLeave: () => void
+}
 
-  const identity = useMemo(() => (sessionId ? loadIdentity(sessionId) : null), [sessionId])
+export function ConsultationPage({ identity, onLeave }: Props) {
+  const sessionId = identity.sessionId
 
   const [session, setSession] = useState<ConsultationSession | null>(null)
   const [segments, setSegments] = useState<TranscriptSegment[]>([])
@@ -27,11 +28,6 @@ export function ConsultationPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!sessionId) return
-    if (!identity) {
-      navigate('/')
-      return
-    }
     ;(async () => {
       try {
         const [sessionData, segmentData] = await Promise.all([
@@ -48,7 +44,7 @@ export function ConsultationPage() {
         setLoadError(err instanceof Error ? err.message : '無法載入診間資料')
       }
     })()
-  }, [sessionId, identity, navigate])
+  }, [sessionId])
 
   const handleServerEvent = useCallback((event: ServerEvent) => {
     switch (event.type) {
@@ -83,11 +79,11 @@ export function ConsultationPage() {
   }, [])
 
   const { status: wsStatus, sendAudio } = useConsultationSocket({
-    sessionId: sessionId ?? null,
-    role: identity?.role ?? 'doctor',
-    name: identity?.name ?? '',
+    sessionId,
+    role: identity.role,
+    name: identity.name,
     onEvent: handleServerEvent,
-    enabled: Boolean(sessionId && identity),
+    enabled: true,
   })
 
   const { isRecording, start, stop, error: micError } = useAudioStreamer(sendAudio)
@@ -99,7 +95,6 @@ export function ConsultationPage() {
   }, [sessionEnded, isRecording, stop])
 
   const handleEndSession = async () => {
-    if (!sessionId) return
     if (isRecording) stop()
     setAnalyzing(true)
     try {
@@ -113,13 +108,12 @@ export function ConsultationPage() {
     }
   }
 
-  if (!sessionId || !identity) return null
   if (loadError) return <div className="page-center">{loadError}</div>
   if (!session) return <div className="page-center">載入中…</div>
 
   return (
     <div className="consultation-page">
-      <RoleBanner session={session} role={identity.role} wsStatus={wsStatus} />
+      <RoleBanner session={session} role={identity.role} wsStatus={wsStatus} onLeave={onLeave} />
 
       <div className="consultation-body">
         <div className="transcript-column">

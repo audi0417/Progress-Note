@@ -4,13 +4,19 @@
 醫師可即時或事後校對內容，問診結束後由 LLM 自動整理成「臨床摘要」與「病患易懂的
 衛教說明（診斷、用藥、後續追蹤、警訊）」，經醫師確認後釋出給病患。
 
+前端是單頁（無路由跳轉）、手機優先的 PWA：登入狀態存在 `localStorage`，整個
+「建立/加入診間 → 即時錄音與逐字稿 → AI 摘要」流程都在同一個畫面內完成，
+可以「加入主畫面」像原生 App 一樣全螢幕開啟。
+
 ## 架構總覽
 
 ```
-frontend/  React + TypeScript + Vite
+frontend/  React + TypeScript + Vite + PWA (vite-plugin-pwa)
+  - 單頁流程：登入狀態存 localStorage，App.tsx 依狀態切換「首頁」/「診間」畫面，無路由跳轉
   - 建立/加入診間、即時逐字稿顯示、醫師逐句校對
-  - 麥克風擷取 → 16kHz PCM16 → WebSocket 串流至後端
+  - 麥克風擷取 → 16kHz PCM16 → WebSocket 串流至後端（點擊即跳出瀏覽器原生麥克風授權）
   - 問診結束後顯示 AI 整理摘要（醫師可編輯確認，病患看到白話版）
+  - manifest + service worker：可安裝到手機主畫面，全螢幕獨立視窗開啟
 
 backend/   FastAPI (Python)
   - REST API：建立/加入診間、逐字稿 CRUD、結束問診、產生與審閱臨床筆記
@@ -80,6 +86,23 @@ npm run dev   # http://localhost:5173，已內建 proxy 轉發 /api、/ws 至 :8
 ```
 
 開兩個瀏覽器分頁：一個以「醫師」身份建立診間並分享代碼，另一個以「病患」身份輸入代碼加入，即可體驗完整流程。
+
+## PWA / 手機錄音體驗
+
+- **關於「點擊觸發手機預設錄音 App」**：瀏覽器沒有標準 API 可以呼叫並取回手機
+  內建錄音 App（如 iOS 語音備忘錄）的錄音結果，這是作業系統層級的沙盒限制。
+  本專案改採網頁原生的 `getUserMedia()` 錄音——使用者點擊「開始語音辨識」時，
+  瀏覽器會跳出系統原生的麥克風授權對話框，體感上接近呼叫系統功能，但錄音與
+  串流全部在網頁內完成，不需要另開其他 App。
+- 前端已設定 `vite-plugin-pwa`：build 後會產生 `manifest.webmanifest` 與
+  service worker，手機瀏覽器開啟網址後可用「加入主畫面」安裝，全螢幕獨立
+  視窗開啟，圖示為 `frontend/public/icons/`（純程式產生的暫用圖示，正式上線
+  建議換成正式視覺）。
+- 本機開發時 `npm run dev` 也會啟用 PWA（`devOptions.enabled: true`），方便
+  直接用手機連到你電腦的區網位址測試安裝與錄音授權流程；正式環境仍以
+  `npm run build` 產出的版本為準。
+- API（`/api/*`）與 WebSocket（`/ws/*`）永遠即時連線，service worker 只快取
+  前端靜態資源（JS/CSS/HTML/圖示），不會快取問診資料。
 
 ## LLM 分析設定
 
