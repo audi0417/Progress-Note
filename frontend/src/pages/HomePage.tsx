@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api } from '../api/client'
+import { DEMO_MODE } from '../config'
 import type { StoredIdentity } from '../lib/identity'
 
 type Tab = 'doctor' | 'patient'
@@ -58,6 +59,16 @@ export function HomePage({ onEnter }: Props) {
           Progress <span className="accent-word">Note</span>
         </h1>
         <p className="subtitle">醫病即時診斷筆記 — 語音轉文字 · 即時校對 · AI 診後摘要</p>
+
+        {DEMO_MODE && (
+          <div className="demo-notice">
+            <strong>Demo · 單機體驗版</strong>
+            <span>
+              語音辨識由瀏覽器內建功能提供（Chrome / Android 效果最佳），資料僅存於本機。
+              兩台裝置即時同步、Nemotron 模型與 AI 摘要需搭配後端伺服器才會啟用。
+            </span>
+          </div>
+        )}
 
         <div className="tab-switch">
           <button className={tab === 'doctor' ? 'active' : ''} onClick={() => setTab('doctor')}>

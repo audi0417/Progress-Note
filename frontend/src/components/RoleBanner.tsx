@@ -4,6 +4,7 @@ interface Props {
   session: ConsultationSession
   role: SpeakerRole
   wsStatus: 'connecting' | 'open' | 'closed'
+  demo?: boolean
   onLeave: () => void
 }
 
@@ -13,7 +14,7 @@ const statusLabel: Record<Props['wsStatus'], string> = {
   closed: '連線中斷',
 }
 
-export function RoleBanner({ session, role, wsStatus, onLeave }: Props) {
+export function RoleBanner({ session, role, wsStatus, demo = false, onLeave }: Props) {
   return (
     <div className="role-banner">
       <div>
@@ -28,7 +29,11 @@ export function RoleBanner({ session, role, wsStatus, onLeave }: Props) {
             診間代碼：<strong>{session.join_code}</strong>
           </span>
         )}
-        <span className={`ws-status ${wsStatus}`}>{statusLabel[wsStatus]}</span>
+        {demo ? (
+          <span className="ws-status demo">Demo · 單機模式</span>
+        ) : (
+          <span className={`ws-status ${wsStatus}`}>{statusLabel[wsStatus]}</span>
+        )}
         <button className="ghost leave-button" onClick={onLeave}>
           離開診間
         </button>

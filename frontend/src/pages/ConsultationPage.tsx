@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api } from '../api/client'
+import { demoStore } from '../api/demoStore'
+import { DEMO_MODE } from '../config'
 import { ClinicalNotePanel } from '../components/ClinicalNotePanel'
 import { MicControl } from '../components/MicControl'
 import { RoleBanner } from '../components/RoleBanner'
 import { TranscriptPanel } from '../components/TranscriptPanel'
 import { useAudioStreamer } from '../hooks/useAudioStreamer'
+import { useBrowserSpeech } from '../hooks/useBrowserSpeech'
 import { useConsultationSocket } from '../hooks/useConsultationSocket'
 import type { StoredIdentity } from '../lib/identity'
 import type { ClinicalNote, ConsultationSession, PartialTranscript, ServerEvent, SpeakerRole, TranscriptSegment } from '../types'
@@ -26,6 +29,10 @@ export function ConsultationPage({ identity, onLeave }: Props) {
   const [note, setNote] = useState<ClinicalNote | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+
+  // Demo-mode only: which speaker the browser speech / manual entry is attributed to.
+  const [demoSpeaker, setDemoSpeaker] = useState<SpeakerRole>(identity.role)
+  const [manualText, setManualText] = useState('')
 
   useEffect(() => {
     ;(async () => {
@@ -78,24 +85,65 @@ export function ConsultationPage({ identity, onLeave }: Props) {
     }
   }, [])
 
-  const { status: wsStatus, sendAudio } = useConsultationSocket({
+  // --- Backend mode: WebSocket + PCM audio streaming ---
+  const { status: socketStatus, sendAudio } = useConsultationSocket({
     sessionId,
     role: identity.role,
     name: identity.name,
     onEvent: handleServerEvent,
-    enabled: true,
+    enabled: !DEMO_MODE,
+  })
+  const audio = useAudioStreamer(sendAudio)
+
+  // --- Demo mode: in-browser Web Speech API, results written to localStorage ---
+  const addFinalSegment = useCallback(
+    (speaker: SpeakerRole, text: string) => {
+      const segment = demoStore.addSegment(sessionId, speaker, text)
+      handleServerEvent({ type: 'transcript_final', segment })
+    },
+    [sessionId, handleServerEvent],
+  )
+  const browserSpeech = useBrowserSpeech({
+    onPartial: (text) =>
+      handleServerEvent({ type: 'transcript_partial', speaker: demoSpeaker, text, start_ms: 0, end_ms: 0 }),
+    onFinal: (text) => addFinalSegment(demoSpeaker, text),
   })
 
-  const { isRecording, start, stop, error: micError } = useAudioStreamer(sendAudio)
+  const recorder = DEMO_MODE
+    ? {
+        isRecording: browserSpeech.isListening,
+        start: browserSpeech.start,
+        stop: browserSpeech.stop,
+        disabled: !browserSpeech.supported,
+        error: browserSpeech.supported
+          ? browserSpeech.error
+          : '此瀏覽器不支援語音辨識，請改用下方手動輸入',
+      }
+    : {
+        isRecording: audio.isRecording,
+        start: audio.start,
+        stop: audio.stop,
+        disabled: socketStatus !== 'open',
+        error: audio.error,
+      }
 
+  const wsStatus = DEMO_MODE ? 'open' : socketStatus
   const sessionEnded = session?.status === 'ended' || session?.status === 'analyzed'
 
   useEffect(() => {
-    if (sessionEnded && isRecording) stop()
-  }, [sessionEnded, isRecording, stop])
+    if (sessionEnded && recorder.isRecording) recorder.stop()
+  }, [sessionEnded, recorder.isRecording, recorder.stop])
+
+  const handleManualAdd = (e: FormEvent) => {
+    e.preventDefault()
+    const text = manualText.trim()
+    if (!text) return
+    addFinalSegment(demoSpeaker, text)
+    setManualText('')
+  }
 
   const handleEndSession = async () => {
-    if (isRecording) stop()
+    if (recorder.isRecording) recorder.stop()
     setAnalyzing(true)
     try {
       const generatedNote = await api.endSession(sessionId)
@@ -113,7 +161,7 @@ export function ConsultationPage({ identity, onLeave }: Props) {
 
   return (
     <div className="consultation-page">
-      <RoleBanner session={session} role={identity.role} wsStatus={wsStatus} onLeave={onLeave} />
+      <RoleBanner session={session} role={identity.role} wsStatus={wsStatus} demo={DEMO_MODE} onLeave={onLeave} />
 
       <div className="consultation-body">
         <div className="transcript-column">
@@ -122,20 +170,59 @@ export function ConsultationPage({ identity, onLeave }: Props) {
             partials={partials}
             canEdit={identity.role === 'doctor'}
             editorName={identity.name}
-            onEdit={(segmentId, text) => {
-              api.editSegment(sessionId, segmentId, text, identity.name).catch(() => undefined)
+            onEdit={async (segmentId, text) => {
+              try {
+                const updated = await api.editSegment(sessionId, segmentId, text, identity.name)
+                handleServerEvent({ type: 'segment_edited', segment: updated })
+              } catch {
+                /* ignore edit failures */
+              }
             }}
           />
 
           {!sessionEnded && (
             <div className="controls-row">
+              {DEMO_MODE && (
+                <div className="demo-speaker-toggle" role="group" aria-label="目前發言者">
+                  <span className="demo-speaker-label">目前發言者</span>
+                  <div className="demo-speaker-buttons">
+                    <button
+                      className={demoSpeaker === 'doctor' ? 'active doctor' : ''}
+                      onClick={() => setDemoSpeaker('doctor')}
+                    >
+                      醫師
+                    </button>
+                    <button
+                      className={demoSpeaker === 'patient' ? 'active patient' : ''}
+                      onClick={() => setDemoSpeaker('patient')}
+                    >
+                      病患
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <MicControl
-                isRecording={isRecording}
-                disabled={wsStatus !== 'open'}
-                error={micError}
-                onStart={start}
-                onStop={stop}
+                isRecording={recorder.isRecording}
+                disabled={recorder.disabled}
+                error={recorder.error}
+                onStart={recorder.start}
+                onStop={recorder.stop}
               />
+
+              {DEMO_MODE && (
+                <form className="manual-entry" onSubmit={handleManualAdd}>
+                  <input
+                    value={manualText}
+                    onChange={(e) => setManualText(e.target.value)}
+                    placeholder={`手動輸入一句（以「${demoSpeaker === 'doctor' ? '醫師' : '病患'}」身份）`}
+                  />
+                  <button type="submit" className="primary">
+                    新增
+                  </button>
+                </form>
+              )}
+
               {identity.role === 'doctor' && (
                 <button className="danger" onClick={handleEndSession}>
                   結束問診並產生摘要

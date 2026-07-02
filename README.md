@@ -104,6 +104,34 @@ npm run dev   # http://localhost:5173，已內建 proxy 轉發 /api、/ws 至 :8
 - API（`/api/*`）與 WebSocket（`/ws/*`）永遠即時連線，service worker 只快取
   前端靜態資源（JS/CSS/HTML/圖示），不會快取問診資料。
 
+## GitHub Pages 單機 Demo
+
+GitHub Pages 只能託管靜態前端，跑不了 FastAPI 後端與 WebSocket。因此前端內建一個
+**瀏覽器單機 Demo 模式**（build 時設定 `VITE_DEMO_MODE=true` 啟用），讓整個流程
+不需後端也能在單一裝置上實際試用：
+
+- 語音轉文字改用瀏覽器內建的 **Web Speech API**（`webkitSpeechRecognition`），
+  完全在瀏覽器端執行。Chrome / Android 效果最佳；iOS Safari 支援有限，因此畫面
+  另提供「手動輸入一句」備援，並可切換發言者（醫師／病患），確保任何瀏覽器都能
+  走完流程。
+- 診間、逐字稿、筆記存於 `localStorage`；結束問診後由前端離線產生摘要（非 AI）。
+- Demo 模式**測不到**的功能：兩台裝置即時同步（需 WebSocket 後端中繼）、真正的
+  Nemotron ASR 模型、真正的 Claude AI 摘要。這些都需要啟動 `backend/`。
+
+### 部署方式
+
+已內建 `.github/workflows/deploy-pages.yml`，會在推送到開發分支時自動以
+`VITE_DEMO_MODE=true`、`VITE_BASE=/Progress-Note/` 建置並發布到 GitHub Pages。
+**首次需由 repo 擁有者手動啟用一次**：
+
+1. GitHub repo → **Settings → Pages → Build and deployment → Source** 選 **GitHub Actions**。
+2. 若提示，允許目前分支部署到 `github-pages` 環境。
+3. 等 Actions 的 "Deploy demo to GitHub Pages" workflow 跑完，網址為
+   `https://audi0417.github.io/Progress-Note/`。
+
+`base` 路徑透過 `VITE_BASE` 環境變數設定（預設 `/`），所以本機開發與根目錄部署
+不受影響。
+
 ## LLM 分析設定
 
 在 `backend/.env` 設定：

@@ -1,4 +1,6 @@
 import type { ClinicalNote, ConsultationSession, MedicationItem, TranscriptSegment } from '../types'
+import { DEMO_MODE } from '../config'
+import { demoStore } from './demoStore'
 
 const BASE = '/api'
 
@@ -14,7 +16,23 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json() as Promise<T>
 }
 
-export const api = {
+// In DEMO_MODE the whole API is served from localStorage in-browser. We wrap
+// the synchronous demoStore calls in Promises so callers stay identical.
+const demoApi = {
+  createSession: (doctor_name: string) => Promise.resolve(demoStore.createSession(doctor_name)),
+  joinSession: (join_code: string, patient_name: string) =>
+    Promise.resolve(demoStore.joinSession(join_code, patient_name)),
+  getSession: (sessionId: string) => Promise.resolve(demoStore.getSession(sessionId)),
+  listSegments: (sessionId: string) => Promise.resolve(demoStore.listSegments(sessionId)),
+  editSegment: (sessionId: string, segmentId: string, text: string, edited_by: string) =>
+    Promise.resolve(demoStore.editSegment(sessionId, segmentId, text, edited_by)),
+  endSession: (sessionId: string) => Promise.resolve(demoStore.endSession(sessionId)),
+  getNote: (sessionId: string) => Promise.resolve(demoStore.getNote(sessionId)),
+  reviewNote: (sessionId: string, updates: Parameters<typeof demoStore.reviewNote>[1]) =>
+    Promise.resolve(demoStore.reviewNote(sessionId, updates)),
+}
+
+const httpApi = {
   createSession: (doctor_name: string) =>
     request<ConsultationSession>('/sessions', {
       method: 'POST',
@@ -60,3 +78,5 @@ export const api = {
       body: JSON.stringify(updates),
     }),
 }
+
+export const api = DEMO_MODE ? demoApi : httpApi

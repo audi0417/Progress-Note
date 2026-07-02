@@ -3,7 +3,7 @@
   font-style: normal;
   font-weight: 400 700;
   font-display: swap;
-  src: url('/fonts/fraunces-latin.woff2') format('woff2');
+  src: url('./fonts/fraunces-latin.woff2') format('woff2');
 }
 
 @font-face {
@@ -11,7 +11,7 @@
   font-style: italic;
   font-weight: 400 700;
   font-display: swap;
-  src: url('/fonts/fraunces-italic-latin.woff2') format('woff2');
+  src: url('./fonts/fraunces-italic-latin.woff2') format('woff2');
 }
 
 @font-face {
@@ -19,7 +19,7 @@
   font-style: normal;
   font-weight: 400 700;
   font-display: swap;
-  src: url('/fonts/work-sans-latin.woff2') format('woff2');
+  src: url('./fonts/work-sans-latin.woff2') format('woff2');
 }
 
 :root {
@@ -251,6 +251,27 @@ label {
   margin-bottom: 28px;
 }
 
+.demo-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  background: var(--amber-tint);
+  border: 1px solid var(--gold-line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 22px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+.demo-notice strong {
+  color: var(--amber-strong);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+
 .tab-switch {
   display: flex;
   border-radius: 12px;
@@ -379,6 +400,11 @@ label {
 .ws-status.closed {
   color: var(--clay);
   background: var(--clay-tint);
+}
+
+.ws-status.demo {
+  color: var(--amber-strong);
+  background: var(--amber-tint);
 }
 
 .consultation-body {
@@ -525,6 +551,64 @@ label {
   border-radius: 16px;
   box-shadow: var(--shadow-md);
   padding: 24px 20px;
+}
+
+.demo-speaker-toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.demo-speaker-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.demo-speaker-buttons {
+  display: flex;
+  gap: 6px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px;
+}
+
+.demo-speaker-buttons button {
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+  padding: 6px 18px;
+  font-weight: 600;
+  color: var(--ink-faint);
+}
+
+.demo-speaker-buttons button.active.doctor {
+  background: var(--sage);
+  color: white;
+}
+
+.demo-speaker-buttons button.active.patient {
+  background: var(--amber);
+  color: white;
+}
+
+.manual-entry {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 460px;
+}
+
+.manual-entry input {
+  flex: 1;
+}
+
+.manual-entry button {
+  flex-shrink: 0;
 }
 
 .mic-control {
