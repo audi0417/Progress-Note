@@ -1,0 +1,474 @@
+:root {
+  --text: #3f3b46;
+  --text-h: #16151a;
+  --text-muted: #83808c;
+  --bg: #f7f6f9;
+  --surface: #ffffff;
+  --border: #e4e2e8;
+  --accent: #6d4cff;
+  --accent-strong: #5636e0;
+  --accent-bg: rgba(109, 76, 255, 0.08);
+  --doctor: #2f6fed;
+  --doctor-bg: rgba(47, 111, 237, 0.08);
+  --patient: #12a17d;
+  --patient-bg: rgba(18, 161, 125, 0.1);
+  --danger: #d9455f;
+  --warn-bg: #fff4e5;
+  --warn-border: #f3c98b;
+  --shadow: 0 10px 30px -12px rgba(22, 21, 26, 0.15);
+  --sans: 'Segoe UI', system-ui, -apple-system, Roboto, 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+
+  font: 15px/1.6 var(--sans);
+  color: var(--text);
+  background: var(--bg);
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+h1, h2, h3 {
+  color: var(--text-h);
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+p {
+  margin: 0 0 4px;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-h);
+  padding: 10px 16px;
+  transition: all 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+button.primary:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+
+button.ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+  padding: 6px 10px;
+}
+
+button.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+button.danger:hover:not(:disabled) {
+  background: var(--danger);
+  color: white;
+}
+
+input, textarea {
+  font: inherit;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-h);
+  width: 100%;
+}
+
+input:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  text-align: left;
+}
+
+.error-text {
+  color: var(--danger);
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+/* ---------- Layout ---------- */
+
+.page-center {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.card {
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 32px;
+}
+
+.home-card {
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+}
+
+.subtitle {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+
+.tab-switch {
+  display: flex;
+  border-radius: 10px;
+  background: var(--bg);
+  padding: 4px;
+  margin-bottom: 20px;
+}
+
+.tab-switch button {
+  flex: 1;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+}
+
+.tab-switch button.active {
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.form-stack {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Consultation page ---------- */
+
+.consultation-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.role-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.role-banner-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.role-pill {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-right: 10px;
+}
+
+.role-pill.doctor {
+  background: var(--doctor-bg);
+  color: var(--doctor);
+}
+
+.role-pill.patient {
+  background: var(--patient-bg);
+  color: var(--patient);
+}
+
+.session-meta {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.join-code {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.ws-status {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--bg);
+}
+
+.ws-status.open {
+  color: var(--patient);
+}
+
+.ws-status.closed {
+  color: var(--danger);
+}
+
+.consultation-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 20px;
+  padding: 20px 24px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .consultation-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+.transcript-column, .note-column {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ---------- Transcript ---------- */
+
+.transcript-panel {
+  background: var(--surface);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 20px;
+  min-height: 320px;
+  max-height: 60vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.transcript-panel.empty {
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.transcript-line {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 8px 10px;
+  border-radius: 10px;
+}
+
+.transcript-line.doctor {
+  background: var(--doctor-bg);
+}
+
+.transcript-line.patient {
+  background: var(--patient-bg);
+}
+
+.transcript-line.partial {
+  opacity: 0.55;
+  font-style: italic;
+}
+
+.speaker-tag {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text-h);
+}
+
+.line-text {
+  margin: 0;
+  flex: 1;
+  white-space: pre-wrap;
+}
+
+.line-text.editable {
+  cursor: pointer;
+}
+
+.line-text.editable:hover {
+  text-decoration: underline dotted;
+}
+
+.edited-badge {
+  margin-left: 8px;
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.edit-row {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.edit-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.edit-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-top: 4px;
+}
+
+.controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--surface);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 16px 20px;
+  flex-wrap: wrap;
+}
+
+.mic-control {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mic-button {
+  font-weight: 600;
+}
+
+.mic-button.recording {
+  border-color: var(--danger);
+  color: var(--danger);
+  animation: pulse 1.6s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(217, 69, 95, 0.3); }
+  50% { box-shadow: 0 0 0 6px rgba(217, 69, 95, 0); }
+}
+
+/* ---------- Clinical note ---------- */
+
+.note-panel {
+  background: var(--surface);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.analyzing {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 24px 0;
+}
+
+.review-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  background: var(--bg);
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+.review-hint.approved {
+  color: var(--patient);
+  background: var(--patient-bg);
+}
+
+.medication-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.medication-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.4fr auto;
+  gap: 8px;
+}
+
+.note-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.note-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: left;
+}
+
+.note-card h3 {
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+
+.note-card ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.med-instructions {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.note-card.warning {
+  background: var(--warn-bg);
+  border-color: var(--warn-border);
+}

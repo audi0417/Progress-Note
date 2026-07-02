@@ -1,0 +1,29 @@
+# --- Core web framework ---
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+websockets==13.1
+python-multipart==0.0.9
+
+# --- Data layer ---
+sqlalchemy==2.0.35
+aiosqlite==0.20.0
+pydantic==2.9.2
+pydantic-settings==2.5.2
+
+# --- Audio handling ---
+numpy==1.26.4
+
+# --- LLM analysis (structured note generation) ---
+anthropic==0.34.2
+
+# --- Streaming ASR (nvidia/nemotron-3.5-asr-streaming-0.6b) ---
+# Heavy, GPU-oriented deps. Optional at runtime: the app falls back to
+# ASR_BACKEND=mock when these are not installed / no weights are available.
+# Install separately with: pip install -r requirements-asr.txt
+# nemo_toolkit[asr]
+# torch
+
+# --- Testing ---
+pytest==8.3.3
+pytest-asyncio==0.24.0
+httpx==0.27.2

@@ -1,0 +1,14 @@
+# Optional, heavy dependencies required to run the real streaming ASR model
+# (nvidia/nemotron-3.5-asr-streaming-0.6b) instead of the built-in mock backend.
+#
+# These are kept out of requirements.txt because they require a CUDA-capable
+# GPU and a multi-GB download, which is not available in every environment
+# (e.g. CI, lightweight dev containers). Install with:
+#
+#   pip install -r requirements.txt -r requirements-asr.txt
+#
+# and set ASR_BACKEND=nemotron in your .env file.
+
+torch>=2.3.0
+nemo_toolkit[asr]>=2.0.0
+huggingface_hub>=0.24.0
