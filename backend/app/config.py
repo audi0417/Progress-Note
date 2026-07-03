@@ -16,6 +16,16 @@ class Settings(BaseSettings):
     asr_sample_rate: int = 16000
     asr_device: str = "cuda"
 
+    # Speaker diarization ("who spoke when"). "mock" simulates a two-speaker
+    # back-and-forth without any model; "sortformer" uses NVIDIA NeMo streaming
+    # diarization (GPU). Diarization only produces anonymous clusters
+    # (speaker_0/1); mapping clusters to doctor/patient happens via the LLM at
+    # the end of the consultation.
+    diarization_backend: str = "mock"
+    diarization_model_name: str = "nvidia/diar_streaming_sortformer_4spk-v2"
+    diarization_device: str = "cuda"
+    diarization_max_speakers: int = 2
+
     # LLM analysis backend used to turn a raw transcript into a structured,
     # patient-friendly clinical note once a consultation ends.
     llm_provider: str = "anthropic"

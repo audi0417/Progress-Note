@@ -1,17 +1,32 @@
 import { useState } from 'react'
-import type { PartialTranscript, SpeakerRole, TranscriptSegment } from '../types'
+import type { ParticipantRole, TranscriptSegment } from '../types'
 
 interface Props {
   segments: TranscriptSegment[]
-  partials: Record<SpeakerRole, PartialTranscript | null>
+  partial: string | null
   canEdit: boolean
   editorName: string
   onEdit: (segmentId: string, text: string) => void
+  onSetSpeaker: (segmentId: string, speaker: ParticipantRole) => void
 }
 
-const speakerLabel: Record<SpeakerRole, string> = { doctor: '醫師', patient: '病患' }
+interface SpeakerMeta {
+  label: string
+  cls: string
+}
 
-export function TranscriptPanel({ segments, partials, canEdit, editorName, onEdit }: Props) {
+function speakerMeta(seg: TranscriptSegment): SpeakerMeta {
+  if (seg.speaker === 'doctor') return { label: '醫師', cls: 'doctor' }
+  if (seg.speaker === 'patient') return { label: '病患', cls: 'patient' }
+  if (seg.speaker_label) {
+    const idx = Number.parseInt(seg.speaker_label.replace(/\D/g, ''), 10) || 0
+    const letter = String.fromCharCode(65 + (idx % 2)) // A / B
+    return { label: `說話者 ${letter}`, cls: `spk spk-${idx % 2}` }
+  }
+  return { label: '待標記', cls: 'pending' }
+}
+
+export function TranscriptPanel({ segments, partial, canEdit, editorName, onEdit, onSetSpeaker }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
 
@@ -22,13 +37,11 @@ export function TranscriptPanel({ segments, partials, canEdit, editorName, onEdi
   }
 
   const commitEdit = () => {
-    if (editingId && draft.trim()) {
-      onEdit(editingId, draft.trim())
-    }
+    if (editingId && draft.trim()) onEdit(editingId, draft.trim())
     setEditingId(null)
   }
 
-  if (segments.length === 0 && !partials.doctor && !partials.patient) {
+  if (segments.length === 0 && !partial) {
     return (
       <div className="transcript-panel empty">
         <p>尚無逐字稿。開始錄音後，對話內容會即時顯示於此。</p>
@@ -38,44 +51,62 @@ export function TranscriptPanel({ segments, partials, canEdit, editorName, onEdi
 
   return (
     <div className="transcript-panel">
-      {segments.map((segment) => (
-        <div key={segment.id} className={`transcript-line ${segment.speaker}`}>
-          <span className="speaker-tag">{speakerLabel[segment.speaker]}</span>
-          {editingId === segment.id ? (
-            <div className="edit-row">
-              <textarea
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                autoFocus
-                rows={2}
-              />
-              <div className="edit-actions">
-                <button onClick={commitEdit}>儲存</button>
-                <button className="ghost" onClick={() => setEditingId(null)}>
-                  取消
-                </button>
-              </div>
+      {segments.map((segment) => {
+        const meta = speakerMeta(segment)
+        return (
+          <div key={segment.id} className={`transcript-line ${meta.cls}`}>
+            <span className="speaker-tag">{meta.label}</span>
+            <div className="line-body">
+              {editingId === segment.id ? (
+                <div className="edit-row">
+                  <textarea value={draft} onChange={(e) => setDraft(e.target.value)} autoFocus rows={2} />
+                  <div className="edit-actions">
+                    <button onClick={commitEdit}>儲存</button>
+                    <button className="ghost" onClick={() => setEditingId(null)}>
+                      取消
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className={`line-text ${canEdit ? 'editable' : ''}`} onClick={() => startEdit(segment)}>
+                    {segment.edited_text ?? segment.original_text}
+                    {segment.edited_text !== null && <span className="edited-badge">已校正</span>}
+                  </p>
+                  {canEdit && (
+                    <div className="speaker-assign">
+                      <button
+                        className={segment.speaker === 'doctor' ? 'active doctor' : ''}
+                        onClick={() => onSetSpeaker(segment.id, 'doctor')}
+                      >
+                        醫師
+                      </button>
+                      <button
+                        className={segment.speaker === 'patient' ? 'active patient' : ''}
+                        onClick={() => onSetSpeaker(segment.id, 'patient')}
+                      >
+                        病患
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
-          ) : (
-            <p className={`line-text ${canEdit ? 'editable' : ''}`} onClick={() => startEdit(segment)}>
-              {segment.edited_text ?? segment.original_text}
-              {segment.edited_text !== null && <span className="edited-badge">已校正</span>}
-            </p>
-          )}
-        </div>
-      ))}
-
-      {(['doctor', 'patient'] as SpeakerRole[]).map((role) =>
-        partials[role] ? (
-          <div key={`partial-${role}`} className={`transcript-line ${role} partial`}>
-            <span className="speaker-tag">{speakerLabel[role]}</span>
-            <p className="line-text">{partials[role]?.text}</p>
           </div>
-        ) : null,
+        )
+      })}
+
+      {partial && (
+        <div className="transcript-line pending partial">
+          <span className="speaker-tag">辨識中</span>
+          <div className="line-body">
+            <p className="line-text">{partial}</p>
+          </div>
+        </div>
       )}
 
-      {canEdit && (
-        <p className="edit-hint">點擊任一句子可即時校正內容（校正者：{editorName}）</p>
+      {canEdit && segments.length > 0 && (
+        <p className="edit-hint">點句子可校正文字、下方按鈕可指定說話者（操作者：{editorName}）</p>
       )}
     </div>
   )

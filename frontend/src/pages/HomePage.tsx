@@ -65,7 +65,7 @@ export function HomePage({ onEnter }: Props) {
             <strong>Demo · 單機體驗版</strong>
             <span>
               語音辨識由瀏覽器內建功能提供（Chrome / Android 效果最佳），資料僅存於本機。
-              兩台裝置即時同步、Nemotron 模型與 AI 摘要需搭配後端伺服器才會啟用。
+              一支裝置收整段對話、錄完可逐句指定醫師/病患。自動聲音分辨說話者與 AI 摘要需搭配後端伺服器才會啟用。
             </span>
           </div>
         )}

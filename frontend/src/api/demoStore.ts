@@ -92,6 +92,7 @@ export const demoStore = {
       session_id: sessionId,
       sequence: list.length,
       speaker,
+      speaker_label: null,
       original_text: text,
       edited_text: null,
       is_final: true,
@@ -103,6 +104,18 @@ export const demoStore = {
     }
     list.push(segment)
     store.segments[sessionId] = list
+    save(store)
+    return segment
+  },
+
+  setSegmentSpeaker(sessionId: string, segmentId: string, speaker: SpeakerRole, edited_by: string): TranscriptSegment {
+    const store = load()
+    const list = store.segments[sessionId] ?? []
+    const segment = list.find((s) => s.id === segmentId)
+    if (!segment) fail('找不到逐字稿片段')
+    segment.speaker = speaker
+    segment.edited_by = edited_by
+    segment.edited_at = now()
     save(store)
     return segment
   },
@@ -172,7 +185,7 @@ export const demoStore = {
 function buildDemoNote(sessionId: string, segments: TranscriptSegment[]): ClinicalNote {
   const transcript = segments
     .map((s) => {
-      const who = s.speaker === 'doctor' ? '醫師' : '病患'
+      const who = s.speaker === 'doctor' ? '醫師' : s.speaker === 'patient' ? '病患' : '未標記'
       const text = (s.edited_text ?? s.original_text).trim()
       return text ? `${who}：${text}` : ''
     })

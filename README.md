@@ -24,18 +24,27 @@ backend/   FastAPI (Python)
   - ASR 服務抽象層（services/asr）：
       - mock：不需 GPU / 模型權重，以簡單語音活性偵測模擬分段輸出，方便本機開發與展示完整流程
       - nemotron：串接 nvidia/nemotron-3.5-asr-streaming-0.6b（NeMo streaming ASR）
-  - LLM 分析服務（services/analysis_service.py）：呼叫 Anthropic API 將逐字稿整理成結構化 JSON；
-    未設定金鑰時退回離線版摘要，方便展示其餘功能
+  - 說話者分離抽象層（services/diarization）：一支裝置收整段對話，靠聲音切出匿名的
+    「說話者 A / B」（speaker_0 / speaker_1）。
+      - mock：不需模型，用停頓模擬兩人輪流發言
+      - sortformer：串接 NVIDIA NeMo 說話者分離（Sortformer，需 GPU）
+  - LLM 分析服務（services/analysis_service.py）：呼叫 Anthropic API 將逐字稿整理成結構化 JSON，
+    並判斷每個匿名說話者是醫師還是病患；未設定金鑰時退回離線版摘要 + 啟發式角色對應
   - SQLite（可換成其他 SQLAlchemy 支援的資料庫）儲存診間、逐字稿、筆記
 ```
 
-### 資料流程
+### 資料流程（單一裝置收音 + 自動分辨說話者）
 
-1. 醫師建立診間 → 取得 6 碼代碼；病患輸入代碼加入。
-2. 雙方各自連上 WebSocket（`role=doctor` / `role=patient`），各自的麥克風音訊會標記對應角色送給後端 ASR。
-3. ASR 產生 partial（即時顯示、可能變動）與 final（寫入資料庫、廣播給雙方）逐字稿片段。
-4. 醫師可點擊任何一句即時校正內容（`PATCH /api/sessions/{id}/segments/{segment_id}`），校正結果即時同步給病患畫面。
-5. 醫師按下「結束問診」→ `POST /api/sessions/{id}/end`：關閉診間、將完整逐字稿送給 LLM，產生：
+1. 醫師建立診間 → 取得 6 碼代碼；病患可輸入代碼加入只看結果。
+2. 醫師的裝置連上 WebSocket，一支麥克風收整個房間的對話送給後端。
+3. 同一段音訊同時進 ASR（轉文字）與 diarization（分辨說話者）。每句 final 逐字稿
+   會標上匿名的 `speaker_label`（speaker_0/1），`speaker` 先記為 `unknown`，即時以
+   「說話者 A / B」顯示。
+4. 醫師可隨時點句子校正文字，或用按鈕改某句的說話者
+   （`PATCH /api/sessions/{id}/segments/{segment_id}` 與 `.../speaker`）。手動修正優先。
+5. 醫師按下「結束問診」→ `POST /api/sessions/{id}/end`：把逐字稿送給 LLM，LLM 同時
+   （a）判斷 speaker_0/1 各是醫師還是病患，回填每句的角色（未手動改過的才動），
+   （b）產生下列摘要：
    - `diagnosis_summary` / `treatment_plan`：醫師視角的臨床摘要與處置計畫
    - `patient_summary` / `medications` / `follow_up` / `warning_signs`：病患視角的白話說明、用藥、追蹤與警訊
 6. 醫師可在確認畫面修改 AI 產生的內容，按下「確認並釋出給病患」後，病患畫面才會顯示最終版本。

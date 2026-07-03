@@ -49,6 +49,13 @@
   --clay: #b1493c;
   --clay-tint: rgba(177, 73, 60, 0.1);
 
+  /* Anonymous diarization speakers (A / B), before roles are resolved.
+     Deliberately different hues from the sage/amber role colors. */
+  --speaker-a: #3a6ea5;
+  --speaker-a-tint: rgba(58, 110, 165, 0.08);
+  --speaker-b: #8a5a9e;
+  --speaker-b-tint: rgba(138, 90, 158, 0.1);
+
   --gold-tint: #fbf0da;
   --gold-line: #e7c384;
 
@@ -467,8 +474,21 @@ label {
   background: var(--amber-tint);
 }
 
+/* Anonymous diarization clusters, before role is resolved */
+.transcript-line.spk-0 {
+  background: var(--speaker-a-tint);
+}
+
+.transcript-line.spk-1 {
+  background: var(--speaker-b-tint);
+}
+
+.transcript-line.pending {
+  background: var(--paper);
+}
+
 .transcript-line.partial {
-  opacity: 0.6;
+  opacity: 0.65;
   font-style: italic;
 }
 
@@ -481,6 +501,7 @@ label {
   font-weight: 700;
   letter-spacing: 0.02em;
   padding-top: 2px;
+  white-space: nowrap;
 }
 
 .speaker-tag::before {
@@ -499,11 +520,65 @@ label {
   color: var(--amber-strong);
 }
 
+.transcript-line.spk-0 .speaker-tag {
+  color: var(--speaker-a);
+}
+
+.transcript-line.spk-1 .speaker-tag {
+  color: var(--speaker-b);
+}
+
+.transcript-line.pending .speaker-tag {
+  color: var(--ink-faint);
+}
+
+.line-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .line-text {
   margin: 0;
-  flex: 1;
   white-space: pre-wrap;
   color: var(--ink);
+}
+
+.speaker-assign {
+  display: flex;
+  gap: 6px;
+}
+
+.speaker-assign button {
+  padding: 2px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink-faint);
+}
+
+.speaker-assign button.active.doctor {
+  background: var(--sage);
+  border-color: var(--sage);
+  color: white;
+}
+
+.speaker-assign button.active.patient {
+  background: var(--amber);
+  border-color: var(--amber);
+  color: white;
+}
+
+.record-hint {
+  font-size: 12.5px;
+  color: var(--ink-faint);
+  text-align: center;
+  max-width: 440px;
+  line-height: 1.6;
 }
 
 .line-text.editable {
@@ -551,49 +626,6 @@ label {
   border-radius: 16px;
   box-shadow: var(--shadow-md);
   padding: 24px 20px;
-}
-
-.demo-speaker-toggle {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-
-.demo-speaker-label {
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-}
-
-.demo-speaker-buttons {
-  display: flex;
-  gap: 6px;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 4px;
-}
-
-.demo-speaker-buttons button {
-  border: none;
-  background: transparent;
-  border-radius: 999px;
-  padding: 6px 18px;
-  font-weight: 600;
-  color: var(--ink-faint);
-}
-
-.demo-speaker-buttons button.active.doctor {
-  background: var(--sage);
-  color: white;
-}
-
-.demo-speaker-buttons button.active.patient {
-  background: var(--amber);
-  color: white;
 }
 
 .manual-entry {

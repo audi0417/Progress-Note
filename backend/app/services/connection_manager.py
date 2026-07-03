@@ -23,7 +23,10 @@ class ConnectionManager:
     async def broadcast(self, session_id: str, message: dict) -> None:
         payload = json.dumps(message, default=str)
         dead: list[WebSocket] = []
-        for ws in self._connections.get(session_id, set()):
+        # Snapshot the set: a connection may join/leave (mutating the set)
+        # while we await send_text, which would otherwise raise
+        # "Set changed size during iteration".
+        for ws in list(self._connections.get(session_id, set())):
             try:
                 await ws.send_text(payload)
             except Exception:

@@ -1,4 +1,4 @@
-import type { ClinicalNote, ConsultationSession, MedicationItem, TranscriptSegment } from '../types'
+import type { ClinicalNote, ConsultationSession, MedicationItem, SpeakerRole, TranscriptSegment } from '../types'
 import { DEMO_MODE } from '../config'
 import { demoStore } from './demoStore'
 
@@ -26,6 +26,8 @@ const demoApi = {
   listSegments: (sessionId: string) => Promise.resolve(demoStore.listSegments(sessionId)),
   editSegment: (sessionId: string, segmentId: string, text: string, edited_by: string) =>
     Promise.resolve(demoStore.editSegment(sessionId, segmentId, text, edited_by)),
+  setSegmentSpeaker: (sessionId: string, segmentId: string, speaker: SpeakerRole, edited_by: string) =>
+    Promise.resolve(demoStore.setSegmentSpeaker(sessionId, segmentId, speaker, edited_by)),
   endSession: (sessionId: string) => Promise.resolve(demoStore.endSession(sessionId)),
   getNote: (sessionId: string) => Promise.resolve(demoStore.getNote(sessionId)),
   reviewNote: (sessionId: string, updates: Parameters<typeof demoStore.reviewNote>[1]) =>
@@ -54,6 +56,12 @@ const httpApi = {
     request<TranscriptSegment>(`/sessions/${sessionId}/segments/${segmentId}`, {
       method: 'PATCH',
       body: JSON.stringify({ text, edited_by }),
+    }),
+
+  setSegmentSpeaker: (sessionId: string, segmentId: string, speaker: SpeakerRole, edited_by: string) =>
+    request<TranscriptSegment>(`/sessions/${sessionId}/segments/${segmentId}/speaker`, {
+      method: 'PATCH',
+      body: JSON.stringify({ speaker, edited_by }),
     }),
 
   endSession: (sessionId: string) =>

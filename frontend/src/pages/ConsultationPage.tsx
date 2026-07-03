@@ -10,7 +10,7 @@ import { useAudioStreamer } from '../hooks/useAudioStreamer'
 import { useBrowserSpeech } from '../hooks/useBrowserSpeech'
 import { useConsultationSocket } from '../hooks/useConsultationSocket'
 import type { StoredIdentity } from '../lib/identity'
-import type { ClinicalNote, ConsultationSession, PartialTranscript, ServerEvent, SpeakerRole, TranscriptSegment } from '../types'
+import type { ClinicalNote, ConsultationSession, ParticipantRole, ServerEvent, TranscriptSegment } from '../types'
 
 interface Props {
   identity: StoredIdentity
@@ -19,19 +19,14 @@ interface Props {
 
 export function ConsultationPage({ identity, onLeave }: Props) {
   const sessionId = identity.sessionId
+  const isDoctor = identity.role === 'doctor'
 
   const [session, setSession] = useState<ConsultationSession | null>(null)
   const [segments, setSegments] = useState<TranscriptSegment[]>([])
-  const [partials, setPartials] = useState<Record<SpeakerRole, PartialTranscript | null>>({
-    doctor: null,
-    patient: null,
-  })
+  const [partial, setPartial] = useState<string | null>(null)
   const [note, setNote] = useState<ClinicalNote | null>(null)
   const [analyzing, setAnalyzing] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
-
-  // Demo-mode only: which speaker the browser speech / manual entry is attributed to.
-  const [demoSpeaker, setDemoSpeaker] = useState<SpeakerRole>(identity.role)
   const [manualText, setManualText] = useState('')
 
   useEffect(() => {
@@ -56,19 +51,21 @@ export function ConsultationPage({ identity, onLeave }: Props) {
   const handleServerEvent = useCallback((event: ServerEvent) => {
     switch (event.type) {
       case 'transcript_partial':
-        setPartials((prev) => ({
-          ...prev,
-          [event.speaker]: { speaker: event.speaker, text: event.text, start_ms: event.start_ms, end_ms: event.end_ms },
-        }))
+        setPartial(event.text || null)
         break
       case 'transcript_final':
         setSegments((prev) =>
-          prev.some((s) => s.id === event.segment.id) ? prev : [...prev, event.segment].sort((a, b) => a.sequence - b.sequence),
+          prev.some((s) => s.id === event.segment.id)
+            ? prev
+            : [...prev, event.segment].sort((a, b) => a.sequence - b.sequence),
         )
-        setPartials((prev) => ({ ...prev, [event.segment.speaker]: null }))
+        setPartial(null)
         break
       case 'segment_edited':
         setSegments((prev) => prev.map((s) => (s.id === event.segment.id ? event.segment : s)))
+        break
+      case 'segments_relabeled':
+        setSegments(event.segments.slice().sort((a, b) => a.sequence - b.sequence))
         break
       case 'session_ended':
         setSession((prev) => (prev ? { ...prev, status: 'ended' } : prev))
@@ -85,7 +82,7 @@ export function ConsultationPage({ identity, onLeave }: Props) {
     }
   }, [])
 
-  // --- Backend mode: WebSocket + PCM audio streaming ---
+  // --- Backend mode: WebSocket + PCM audio streaming (single room stream) ---
   const { status: socketStatus, sendAudio } = useConsultationSocket({
     sessionId,
     role: identity.role,
@@ -95,18 +92,18 @@ export function ConsultationPage({ identity, onLeave }: Props) {
   })
   const audio = useAudioStreamer(sendAudio)
 
-  // --- Demo mode: in-browser Web Speech API, results written to localStorage ---
-  const addFinalSegment = useCallback(
-    (speaker: SpeakerRole, text: string) => {
-      const segment = demoStore.addSegment(sessionId, speaker, text)
+  // --- Demo mode: in-browser speech; segments captured without a role,
+  // to be assigned per-line afterwards (no diarization in the browser). ---
+  const addUnknownSegment = useCallback(
+    (text: string) => {
+      const segment = demoStore.addSegment(sessionId, 'unknown', text)
       handleServerEvent({ type: 'transcript_final', segment })
     },
     [sessionId, handleServerEvent],
   )
   const browserSpeech = useBrowserSpeech({
-    onPartial: (text) =>
-      handleServerEvent({ type: 'transcript_partial', speaker: demoSpeaker, text, start_ms: 0, end_ms: 0 }),
-    onFinal: (text) => addFinalSegment(demoSpeaker, text),
+    onPartial: (text) => setPartial(text || null),
+    onFinal: (text) => addUnknownSegment(text),
   })
 
   const recorder = DEMO_MODE
@@ -115,9 +112,7 @@ export function ConsultationPage({ identity, onLeave }: Props) {
         start: browserSpeech.start,
         stop: browserSpeech.stop,
         disabled: !browserSpeech.supported,
-        error: browserSpeech.supported
-          ? browserSpeech.error
-          : '此瀏覽器不支援語音辨識，請改用下方手動輸入',
+        error: browserSpeech.supported ? browserSpeech.error : '此瀏覽器不支援語音辨識，請改用下方手動輸入',
       }
     : {
         isRecording: audio.isRecording,
@@ -138,8 +133,17 @@ export function ConsultationPage({ identity, onLeave }: Props) {
     e.preventDefault()
     const text = manualText.trim()
     if (!text) return
-    addFinalSegment(demoSpeaker, text)
+    addUnknownSegment(text)
     setManualText('')
+  }
+
+  const handleSetSpeaker = async (segmentId: string, speaker: ParticipantRole) => {
+    try {
+      const updated = await api.setSegmentSpeaker(sessionId, segmentId, speaker, identity.name)
+      handleServerEvent({ type: 'segment_edited', segment: updated })
+    } catch {
+      /* ignore */
+    }
   }
 
   const handleEndSession = async () => {
@@ -147,6 +151,9 @@ export function ConsultationPage({ identity, onLeave }: Props) {
     setAnalyzing(true)
     try {
       const generatedNote = await api.endSession(sessionId)
+      // Refresh segments so any role relabeling from analysis is reflected.
+      const refreshed = await api.listSegments(sessionId).catch(() => null)
+      if (refreshed) setSegments(refreshed.slice().sort((a, b) => a.sequence - b.sequence))
       setNote(generatedNote)
       setAnalyzing(false)
       setSession((prev) => (prev ? { ...prev, status: 'analyzed' } : prev))
@@ -167,40 +174,27 @@ export function ConsultationPage({ identity, onLeave }: Props) {
         <div className="transcript-column">
           <TranscriptPanel
             segments={segments}
-            partials={partials}
-            canEdit={identity.role === 'doctor'}
+            partial={partial}
+            canEdit={isDoctor}
             editorName={identity.name}
             onEdit={async (segmentId, text) => {
               try {
                 const updated = await api.editSegment(sessionId, segmentId, text, identity.name)
                 handleServerEvent({ type: 'segment_edited', segment: updated })
               } catch {
-                /* ignore edit failures */
+                /* ignore */
               }
             }}
+            onSetSpeaker={handleSetSpeaker}
           />
 
-          {!sessionEnded && (
+          {isDoctor && !sessionEnded && (
             <div className="controls-row">
-              {DEMO_MODE && (
-                <div className="demo-speaker-toggle" role="group" aria-label="目前發言者">
-                  <span className="demo-speaker-label">目前發言者</span>
-                  <div className="demo-speaker-buttons">
-                    <button
-                      className={demoSpeaker === 'doctor' ? 'active doctor' : ''}
-                      onClick={() => setDemoSpeaker('doctor')}
-                    >
-                      醫師
-                    </button>
-                    <button
-                      className={demoSpeaker === 'patient' ? 'active patient' : ''}
-                      onClick={() => setDemoSpeaker('patient')}
-                    >
-                      病患
-                    </button>
-                  </div>
-                </div>
-              )}
+              <p className="record-hint">
+                {DEMO_MODE
+                  ? '一支裝置收整個對話即可；Demo 無自動聲音分辨，錄完可逐句指定醫師/病患'
+                  : '一支裝置收整個對話即可，系統會自動分辨說話者；錄完可逐句校正'}
+              </p>
 
               <MicControl
                 isRecording={recorder.isRecording}
@@ -210,24 +204,20 @@ export function ConsultationPage({ identity, onLeave }: Props) {
                 onStop={recorder.stop}
               />
 
-              {DEMO_MODE && (
-                <form className="manual-entry" onSubmit={handleManualAdd}>
-                  <input
-                    value={manualText}
-                    onChange={(e) => setManualText(e.target.value)}
-                    placeholder={`手動輸入一句（以「${demoSpeaker === 'doctor' ? '醫師' : '病患'}」身份）`}
-                  />
-                  <button type="submit" className="primary">
-                    新增
-                  </button>
-                </form>
-              )}
-
-              {identity.role === 'doctor' && (
-                <button className="danger" onClick={handleEndSession}>
-                  結束問診並產生摘要
+              <form className="manual-entry" onSubmit={handleManualAdd}>
+                <input
+                  value={manualText}
+                  onChange={(e) => setManualText(e.target.value)}
+                  placeholder="手動補一句（語音不支援時使用）"
+                />
+                <button type="submit" className="primary">
+                  新增
                 </button>
-              )}
+              </form>
+
+              <button className="danger" onClick={handleEndSession}>
+                結束問診並產生摘要
+              </button>
             </div>
           )}
         </div>

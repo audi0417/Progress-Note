@@ -1,5 +1,9 @@
 export type SessionStatus = 'waiting' | 'active' | 'ended' | 'analyzed'
-export type SpeakerRole = 'doctor' | 'patient'
+// 'unknown' = captured before the speaker's role is resolved (single-stream
+// recording); carries a diarization cluster in `speaker_label` until mapped.
+export type SpeakerRole = 'doctor' | 'patient' | 'unknown'
+// The role a person uses the app as (never 'unknown').
+export type ParticipantRole = 'doctor' | 'patient'
 
 export interface ConsultationSession {
   id: string
@@ -16,6 +20,7 @@ export interface TranscriptSegment {
   session_id: string
   sequence: number
   speaker: SpeakerRole
+  speaker_label: string | null
   original_text: string
   edited_text: string | null
   is_final: boolean
@@ -46,19 +51,13 @@ export interface ClinicalNote {
   reviewed_at: string | null
 }
 
-export interface PartialTranscript {
-  speaker: SpeakerRole
-  text: string
-  start_ms: number
-  end_ms: number
-}
-
 export type ServerEvent =
-  | { type: 'participant_joined'; role: SpeakerRole; name: string }
-  | { type: 'participant_left'; role: SpeakerRole; name: string }
-  | { type: 'transcript_partial'; speaker: SpeakerRole; text: string; start_ms: number; end_ms: number }
+  | { type: 'participant_joined'; role: ParticipantRole; name: string }
+  | { type: 'participant_left'; role: ParticipantRole; name: string }
+  | { type: 'transcript_partial'; text: string; start_ms: number; end_ms: number }
   | { type: 'transcript_final'; segment: TranscriptSegment }
   | { type: 'segment_edited'; segment: TranscriptSegment }
+  | { type: 'segments_relabeled'; segments: TranscriptSegment[] }
   | { type: 'session_ended' }
   | { type: 'analysis_ready'; note: ClinicalNote }
   | { type: 'note_reviewed'; note: ClinicalNote }

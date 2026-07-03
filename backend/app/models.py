@@ -26,6 +26,12 @@ class SessionStatus(str, enum.Enum):
 class SpeakerRole(str, enum.Enum):
     DOCTOR = "doctor"
     PATIENT = "patient"
+    # Recorded before the speaker's role is known. In the single-stream model
+    # the microphone captures the whole room, so a segment starts as UNKNOWN
+    # (carrying a raw diarization cluster in ``speaker_label``) and is resolved
+    # to DOCTOR / PATIENT at the end of the consultation (LLM role mapping) or
+    # by a manual correction.
+    UNKNOWN = "unknown"
 
 
 class ConsultationSession(Base):
@@ -59,7 +65,10 @@ class TranscriptSegment(Base):
     session_id: Mapped[str] = mapped_column(ForeignKey("consultation_sessions.id"))
     sequence: Mapped[int] = mapped_column(default=0)
 
-    speaker: Mapped[SpeakerRole] = mapped_column(Enum(SpeakerRole))
+    speaker: Mapped[SpeakerRole] = mapped_column(Enum(SpeakerRole), default=SpeakerRole.UNKNOWN)
+    # Raw diarization cluster (e.g. "speaker_0"), assigned live by the
+    # diarizer before the role is resolved. Kept for audit / manual re-mapping.
+    speaker_label: Mapped[str | None] = mapped_column(String(32), nullable=True)
     original_text: Mapped[str] = mapped_column(Text)
     edited_text: Mapped[str | None] = mapped_column(Text, nullable=True)
 

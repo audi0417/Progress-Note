@@ -5,10 +5,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import ClinicalNote, ConsultationSession, SessionStatus, TranscriptSegment
+from app.models import ClinicalNote, ConsultationSession, SessionStatus, SpeakerRole, TranscriptSegment
 from app.schemas import (
     ClinicalNoteOut,
     ClinicalNoteReviewRequest,
+    SegmentSpeakerRequest,
     TranscriptEditRequest,
     TranscriptSegmentOut,
 )
@@ -61,6 +62,34 @@ async def edit_segment(
     return segment
 
 
+@router.patch("/{session_id}/segments/{segment_id}/speaker", response_model=TranscriptSegmentOut)
+async def set_segment_speaker(
+    session_id: str, segment_id: str, payload: SegmentSpeakerRequest, db: AsyncSession = Depends(get_db)
+):
+    """Manually (re)assign a segment's speaker role — used to correct the
+    automatic diarization/LLM mapping, or to label segments in the demo where
+    no diarization is available."""
+    await _get_session_or_404(session_id, db)
+    segment = await db.get(TranscriptSegment, segment_id)
+    if segment is None or segment.session_id != session_id:
+        raise HTTPException(status_code=404, detail="Transcript segment not found")
+
+    segment.speaker = payload.speaker
+    segment.edited_by = payload.edited_by
+    segment.edited_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(segment)
+
+    await manager.broadcast(
+        session_id,
+        {
+            "type": "segment_edited",
+            "segment": TranscriptSegmentOut.model_validate(segment).model_dump(mode="json"),
+        },
+    )
+    return segment
+
+
 @router.post("/{session_id}/end", response_model=ClinicalNoteOut)
 async def end_session(session_id: str, db: AsyncSession = Depends(get_db)):
     session = await _get_session_or_404(session_id, db)
@@ -87,6 +116,17 @@ async def end_session(session_id: str, db: AsyncSession = Depends(get_db)):
 
     analysis = await analyze_transcript(segments)
 
+    # Resolve anonymous diarization clusters -> doctor/patient. Only touch
+    # segments still UNKNOWN so manual corrections made during the consult win.
+    speaker_roles = analysis.get("speaker_roles", {})
+    relabeled = False
+    for seg in segments:
+        if seg.speaker == SpeakerRole.UNKNOWN and seg.speaker_label in speaker_roles:
+            seg.speaker = SpeakerRole(speaker_roles[seg.speaker_label])
+            relabeled = True
+    if relabeled:
+        await db.commit()
+
     note = ClinicalNote(
         session_id=session_id,
         diagnosis_summary=analysis.get("diagnosis_summary", ""),
@@ -101,6 +141,21 @@ async def end_session(session_id: str, db: AsyncSession = Depends(get_db)):
     session.status = SessionStatus.ANALYZED
     await db.commit()
     await db.refresh(note)
+
+    # Tell clients the segments were relabeled (doctor/patient) so the live
+    # transcript updates from "說話者 A/B" to real roles.
+    if relabeled:
+        for seg in segments:
+            await db.refresh(seg)
+        await manager.broadcast(
+            session_id,
+            {
+                "type": "segments_relabeled",
+                "segments": [
+                    TranscriptSegmentOut.model_validate(seg).model_dump(mode="json") for seg in segments
+                ],
+            },
+        )
 
     await manager.broadcast(
         session_id,

@@ -37,6 +37,7 @@ class TranscriptSegmentOut(BaseModel):
     session_id: str
     sequence: int
     speaker: SpeakerRole
+    speaker_label: str | None
     original_text: str
     edited_text: str | None
     is_final: bool
@@ -53,6 +54,11 @@ class TranscriptSegmentOut(BaseModel):
 
 class TranscriptEditRequest(BaseModel):
     text: str = Field(min_length=1)
+    edited_by: str = Field(min_length=1, max_length=120)
+
+
+class SegmentSpeakerRequest(BaseModel):
+    speaker: SpeakerRole
     edited_by: str = Field(min_length=1, max_length=120)
 
 

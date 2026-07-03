@@ -1,8 +1,8 @@
-import type { SpeakerRole } from '../types'
+import type { ParticipantRole } from '../types'
 
 export interface StoredIdentity {
   sessionId: string
-  role: SpeakerRole
+  role: ParticipantRole
   name: string
 }
 
